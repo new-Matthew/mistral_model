@@ -1,12 +1,25 @@
+# from langchain_community.vectorstores import Chroma
+
+# from langchain_community.chat_models import ChatOllama
+# from langchain_community.embeddings import FastEmbedEmbeddings
+# from langchain.schema.output_parser import StrOutputParser
+# from langchain_community.document_loaders import PyPDFLoader
+# from langchain.text_splitter import RecursiveCharacterTextSplitter
+# from langchain.schema.runnable import RunnablePassthrough
+# from langchain.prompts import PromptTemplate
+# from langchain.vectorstores.utils import filter_complex_metadata
+
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain.schema.output_parser import StrOutputParser
 from langchain_community.document_loaders import PyPDFLoader
+
+from langchain.schema.output_parser import StrOutputParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import PromptTemplate
-from langchain.vectorstores.utils import filter_complex_metadata
+from langchain.vectorstores import utils as chromautils
+
 
 
 class ChatPDF:
@@ -31,7 +44,7 @@ class ChatPDF:
     def ingest(self, pdf_file_path: str):
         docs = PyPDFLoader(file_path=pdf_file_path).load()
         chunks = self.text_splitter.split_documents(docs)
-        chunks = filter_complex_metadata(chunks)
+        chunks = chromautils.filter_complex_metadata(chunks)
 
         vector_store = Chroma.from_documents(documents=chunks, embedding=FastEmbedEmbeddings())
         self.retriever = vector_store.as_retriever(
