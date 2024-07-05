@@ -1,0 +1,7 @@
+pip install langchain_community==0.2.2
+pip install langchain-cli
+pip install streamlit
+pip install streamlit_chat
+pip install chromadb
+pip install pypdf
+pip install fastembed

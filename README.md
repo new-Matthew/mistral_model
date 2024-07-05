@@ -3,6 +3,7 @@ Build your own ChatPDF and run them locally
 
 Dependencies:
 - langchain
+- langchain-community
 - streamlit
 - streamlit-chat
 - pypdf
@@ -10,8 +11,8 @@ Dependencies:
 - fastembed
 
 ```bash
-pip install langchain streamlit streamlit_chat chromadb pypdf fastembed
-```
+pip install langchain streamlit streamlit_chat chromadb pypdf fastembed´´´
+pip install -r requirements.txt
 
 Blog post: https://blog.duy-huynh.com/build-your-own-rag-and-run-them-locally/
 
