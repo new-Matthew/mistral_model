@@ -8,8 +8,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
-#from langchain.schema.runnable import RunnableParallel
-
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
 
 class ChatPDF:
     vector_store = None
@@ -37,42 +37,27 @@ class ChatPDF:
         chunks = chromautils.filter_complex_metadata(chunks)
 
         vector_store = Chroma.from_documents(documents=chunks, embedding=FastEmbedEmbeddings())
-        self.retriever = vector_store.as_retriever(
+        base_retriever = vector_store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
                 "k": 3,
-                "score_threshold": 0.6,
+                "score_threshold": 0.5,
             },
             )
-        # self.chain = RunnableParallel(
-        #     {"context": self.retriever, "question": RunnablePassthrough()}
-        # ).assign(
-        #     answer=self.prompt | self.model | StrOutputParser()
-        # )
+                # Adiciona um compressor de documento para refinar os resultados
+        compressor = LLMChainExtractor.from_llm(self.model)
+        self.retriever = ContextualCompressionRetriever(
+            base_compressor=compressor,
+            base_retriever=base_retriever
+        )
+
 
         self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                       | self.prompt
                       | self.model
                       | StrOutputParser())
 
-    # def ask(self, query: str):
-    #     if not self.chain:
-    #         return "Por favor, adicione um documento em PDF primeiro."
 
-    #     result = self.chain.invoke(query)
-        
-    #     answer = result['answer']
-    #     relevant_chunks = result['context']
-        
-    #     return {
-    #         "answer": answer,
-    #         "relevant_chunks": [
-    #             {
-    #                 "content": doc.page_content,
-    #                 "metadata": doc.metadata
-    #             } for doc in relevant_chunks
-    #         ]
-    #     }
 
     def ask(self, query: str):
         if not self.chain:
