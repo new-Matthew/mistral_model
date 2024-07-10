@@ -18,7 +18,7 @@ def display_messages():
 def process_input():
     if st.session_state["user_input"] and len(st.session_state["user_input"].strip()) > 0:
         user_text = st.session_state["user_input"].strip()
-        with st.session_state["thinking_spinner"], st.spinner(f"Thinking"):
+        with st.session_state["thinking_spinner"], st.spinner(f"Pensando"):
             agent_text = st.session_state["assistant"].ask(user_text)
 
         st.session_state["messages"].append((user_text, True))

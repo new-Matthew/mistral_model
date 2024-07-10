@@ -1,14 +1,3 @@
-# from langchain_community.vectorstores import Chroma
-
-# from langchain_community.chat_models import ChatOllama
-# from langchain_community.embeddings import FastEmbedEmbeddings
-# from langchain.schema.output_parser import StrOutputParser
-# from langchain_community.document_loaders import PyPDFLoader
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain.schema.runnable import RunnablePassthrough
-# from langchain.prompts import PromptTemplate
-# from langchain.vectorstores.utils import filter_complex_metadata
-
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import FastEmbedEmbeddings
@@ -19,7 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
-
+#from langchain.schema.runnable import RunnableParallel
 
 
 class ChatPDF:
@@ -28,17 +17,18 @@ class ChatPDF:
     chain = None
 
     def __init__(self):
-        self.model = ChatOllama(model="tinyllama")
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
+        self.model = ChatOllama(model="llama2", temperature=0.01)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=128, chunk_overlap=25)
         self.prompt = PromptTemplate.from_template(
-            """
-            <s> [INST] You are an assistant for question-answering tasks. Use the following pieces of retrieved context 
-            to answer the question. If you don't know the answer, just say that you don't know. Use three sentences
-             maximum and keep the answer concise. [/INST] </s> 
-            [INST] Question: {question} 
-            Context: {context} 
-            Answer: [/INST]
-            """
+        """
+        <s> [INST] Você é um assistente para tarefas de resposta a perguntas. Use SOMENTE as informações fornecidas no contexto 
+        para responder à pergunta. Não adicione informações além do que está explicitamente declarado no contexto. 
+        Se a informação não estiver presente no contexto, diga que você não pode responder com base nas informações fornecidas. 
+        Responda sempre em português, traduzindo se necessário. Não crie respostas. [/INST] </s> 
+        [INST] Pergunta: {question} 
+        Contexto: {context} 
+        Responda em português, com base apenas no contexto fornecido: [/INST]
+        """
         )
 
     def ingest(self, pdf_file_path: str):
@@ -51,21 +41,45 @@ class ChatPDF:
             search_type="similarity_score_threshold",
             search_kwargs={
                 "k": 3,
-                "score_threshold": 0.5,
+                "score_threshold": 0.6,
             },
-        )
+            )
+        # self.chain = RunnableParallel(
+        #     {"context": self.retriever, "question": RunnablePassthrough()}
+        # ).assign(
+        #     answer=self.prompt | self.model | StrOutputParser()
+        # )
 
         self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                       | self.prompt
                       | self.model
                       | StrOutputParser())
 
+    # def ask(self, query: str):
+    #     if not self.chain:
+    #         return "Por favor, adicione um documento em PDF primeiro."
+
+    #     result = self.chain.invoke(query)
+        
+    #     answer = result['answer']
+    #     relevant_chunks = result['context']
+        
+    #     return {
+    #         "answer": answer,
+    #         "relevant_chunks": [
+    #             {
+    #                 "content": doc.page_content,
+    #                 "metadata": doc.metadata
+    #             } for doc in relevant_chunks
+    #         ]
+    #     }
+
     def ask(self, query: str):
         if not self.chain:
-            return "Please, add a PDF document first."
+            return "Por favor, adicione um documento em PDF primeiro."
 
         return self.chain.invoke(query)
-
+        
     def clear(self):
         self.vector_store = None
         self.retriever = None
