@@ -5,3 +5,4 @@ streamlit_chat
 chromadb
 pypdf
 fastembed
+sentence-transformers

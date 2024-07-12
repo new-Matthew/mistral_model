@@ -1,8 +1,6 @@
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
-from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
-
 from langchain.schema.output_parser import StrOutputParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
@@ -10,14 +8,15 @@ from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
-
+from langchain.embeddings import HuggingFaceEmbeddings
+#from langchain_community.embeddings import FastEmbedEmbeddings
 class ChatPDF:
     vector_store = None
     retriever = None
     chain = None
 
     def __init__(self):
-        self.model = ChatOllama(model="llama3", temperature=0.1)
+        self.model = ChatOllama(model="llama3:8b", temperature=0.1)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=300)
         self.prompt = PromptTemplate.from_template(
         """
@@ -27,7 +26,7 @@ class ChatPDF:
         Responda sempre em português, traduzindo se necessário.[/INST] </s> 
         [INST] Pergunta: {question} 
         Contexto: {context} 
-        Responda em português, com base apenas no contexto fornecido: [/INST]
+        Responda em português: [/INST]
         """
         )
 
@@ -36,15 +35,17 @@ class ChatPDF:
         chunks = self.text_splitter.split_documents(docs)
         chunks = chromautils.filter_complex_metadata(chunks)
 
-        vector_store = Chroma.from_documents(documents=chunks, embedding=FastEmbedEmbeddings(), persist_directory="./vector_store")
-        base_retriever = vector_store.as_retriever(
+        embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+        self.vector_store = Chroma.from_documents(documents=chunks, embedding=embedding_model, persist_directory="./vector_store")
+        base_retriever = self.vector_store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
                 "k": 4,
-                "score_threshold": 0.5,
+                "score_threshold": 0.6,
             },
-            )
-                # Adiciona um compressor de documento para refinar os resultados
+        )
+
         compressor = LLMChainExtractor.from_llm(self.model)
         self.retriever = ContextualCompressionRetriever(
             base_compressor=compressor,
@@ -52,7 +53,7 @@ class ChatPDF:
         )
 
 
-        self.chain = ({"context": base_retriever, "question": RunnablePassthrough()}
+        self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                       | self.prompt
                       | self.model
                       | StrOutputParser())
