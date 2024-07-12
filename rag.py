@@ -2,7 +2,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
-
 from langchain.schema.output_parser import StrOutputParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
@@ -25,9 +24,9 @@ class ChatPDF:
         para responder à pergunta. Responda o que está explicitamente declarado no contexto. 
         Se a informação não estiver presente no contexto, diga que você não pode responder com base nas informações fornecidas. 
         Responda sempre em português, traduzindo se necessário.[/INST] </s> 
-        [INST] Pergunta: {question} 
-        Contexto: {context} 
-        Responda em português, com base apenas no contexto fornecido: [/INST]
+        [INST] Pergunta: {question}
+        Contexto: {context}
+        Responda em português, seja sucinto: [/INST]
         """
         )
 
@@ -44,13 +43,14 @@ class ChatPDF:
                 "score_threshold": 0.5,
             },
             )
-                # Adiciona um compressor de documento para refinar os resultados
+                
         compressor = LLMChainExtractor.from_llm(self.model)
         self.retriever = ContextualCompressionRetriever(
             base_compressor=compressor,
             base_retriever=base_retriever
         )
-
+        print(base_retriever)
+        
 
         self.chain = ({"context": base_retriever, "question": RunnablePassthrough()}
                       | self.prompt
