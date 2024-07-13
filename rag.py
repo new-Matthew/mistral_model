@@ -8,7 +8,9 @@ from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
-from langchain.embeddings import HuggingFaceEmbeddings
+#from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+#from langchain_community.document_loaders import PyPDFDirectoryLoader
 #from langchain_community.embeddings import FastEmbedEmbeddings
 class ChatPDF:
     vector_store = None
@@ -45,6 +47,7 @@ class ChatPDF:
                 "score_threshold": 0.6,
             },
         )
+        print(chunks)
 
         compressor = LLMChainExtractor.from_llm(self.model)
         self.retriever = ContextualCompressionRetriever(
