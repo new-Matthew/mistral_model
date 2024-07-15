@@ -1,4 +1,3 @@
-#!/bin/env python3
 import os
 import tempfile
 import streamlit as st
@@ -23,6 +22,7 @@ def process_input():
 
         st.session_state["messages"].append((user_text, True))
         st.session_state["messages"].append((agent_text, False))
+        st.session_state["user_input"] = ""
 
 
 def read_and_save_file():
