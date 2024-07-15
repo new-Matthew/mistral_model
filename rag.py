@@ -17,32 +17,31 @@ class ChatPDF:
 
     def __init__(self):
         self.model = ChatOllama(model="llama3", temperature=0.1)
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=300)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         self.prompt = PromptTemplate.from_template(
         """
-        <s> [INST] Você é um assistente de resposta a perguntas. Use SOMENTE as informações fornecidas no contexto 
-        para responder à pergunta. Responda o que está explicitamente declarado no contexto. 
-        Se a informação não estiver presente no contexto, diga que você não pode responder com base nas informações fornecidas. 
-        Responda sempre em português, traduzindo se necessário.[/INST] </s> 
+        <s> [INST] Você é um assistente especializado em responder perguntas baseadas estritamente no conteúdo do documento fornecido. 
+        Use APENAS as informações presentes no contexto abaixo. Não adicione informações externas ou suposições.
+        Se a informação não estiver explicitamente no contexto, responda: "Não posso responder a essa pergunta com base nas informações fornecidas no documento.". [/INST] </s> 
         [INST] Pergunta: {question}
         Contexto: {context}
-        Responda em português, seja sucinto: [/INST]
+        Responda em português, seja preciso e conciso: [/INST]
         """
         )
-
+        
     def ingest(self, pdf_file_path: str):
         docs = PyPDFLoader(file_path=pdf_file_path).load()
         chunks = self.text_splitter.split_documents(docs)
         chunks = chromautils.filter_complex_metadata(chunks)
-
+        
         vector_store = Chroma.from_documents(documents=chunks, embedding=FastEmbedEmbeddings(), persist_directory="./vector_store")
         base_retriever = vector_store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
-                "k": 4,
+                "k": 5,
                 "score_threshold": 0.5,
-            },
-            )
+                }
+                )
                 
         compressor = LLMChainExtractor.from_llm(self.model)
         self.retriever = ContextualCompressionRetriever(
@@ -50,9 +49,11 @@ class ChatPDF:
             base_retriever=base_retriever
         )
         print(base_retriever)
-        
+        print(compressor)
+        print(chunks)
 
-        self.chain = ({"context": base_retriever, "question": RunnablePassthrough()}
+        
+        self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                       | self.prompt
                       | self.model
                       | StrOutputParser())
