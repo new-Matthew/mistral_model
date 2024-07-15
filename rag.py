@@ -15,9 +15,9 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 logging.basicConfig(level=logging.INFO)
 
 class ChatPDF:
-    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=1024, chunk_overlap=300,
+    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=512, chunk_overlap=150,
                  embedding_model_name="sentence-transformers/all-MiniLM-L6-v2", persist_directory="./vector_store",
-                 k=10, score_threshold=0.3):
+                 k=5, score_threshold=0.5):
         self.model = ChatOllama(model=model_name, temperature=temperature)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.prompt = PromptTemplate.from_template(
