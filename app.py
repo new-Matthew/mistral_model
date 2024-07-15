@@ -1,4 +1,3 @@
-#!/bin/env python3
 import os
 import tempfile
 import streamlit as st
