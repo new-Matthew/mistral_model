@@ -1,5 +1,4 @@
 import logging
-import torch
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
 from langchain_community.document_loaders import PyPDFLoader
@@ -8,26 +7,26 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
+# from langchain.retrievers import ContextualCompressionRetriever
+# from langchain.retrievers.document_compressors import LLMChainExtractor
+# import torch
 logging.basicConfig(level=logging.INFO)
 
 class ChatPDF:
-    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=512, chunk_overlap=150,
+    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=250, chunk_overlap=50,
                  embedding_model_name="sentence-transformers/all-MiniLM-L6-v2", persist_directory="./vector_store",
-                 k=5, score_threshold=0.5):
+                 k=3, score_threshold=0.2):
         self.model = ChatOllama(model=model_name, temperature=temperature)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.prompt = PromptTemplate.from_template(
         """
-        <s> [INST] Você é um assistente especializado em responder perguntas baseadas estritamente no conteúdo do documento fornecido. 
-        Use APENAS as informações presentes no contexto abaixo. Não adicione informações externas ou suposições.
-        Se a informação não estiver explicitamente no contexto, responda: "Não posso responder a essa pergunta com base nas informações fornecidas no documento.". [/INST] </s> 
-        [INST] Pergunta: {question}
+        <s>[INST]
+        Você é um assistente técnico especializado em pesquisar documentos. responda somente o que está no contexto. Se a informação não estiver no contexto, diga "Não está no documento"
+        [/INST] </s>
+        Pergunta: {question}
         Contexto: {context}
-        Responda em português, seja preciso e conciso: [/INST]
+        Resposta precisa em português
         """
         )
         self.embedding_model_name = embedding_model_name
@@ -38,8 +37,8 @@ class ChatPDF:
         self.retriever = None
         self.chain = None
 
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        logging.info(f"Using device: {self.device}")
+        # self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # logging.info(f"Using device: {self.device}")
 
     def ingest(self, pdf_file_path: str):
         try:
@@ -51,20 +50,20 @@ class ChatPDF:
             embedding_model = HuggingFaceEmbeddings(model_name=self.embedding_model_name)
 
             self.vector_store = Chroma.from_documents(documents=chunks, embedding=embedding_model, persist_directory=self.persist_directory)
-            base_retriever = self.vector_store.as_retriever(
+            self.retriever = self.vector_store.as_retriever(
                 search_type="similarity_score_threshold",
                 search_kwargs={
                     "k": self.k,
-                    "score_threshold": self.score_threshold,
+                    "score_threshold": self.score_threshold
                 },
             )
             print(chunks)
 
-            compressor = LLMChainExtractor.from_llm(self.model)
-            self.retriever = ContextualCompressionRetriever(
-                base_compressor=compressor,
-                base_retriever=base_retriever
-            )
+            # compressor = LLMChainExtractor.from_llm(self.model)
+            # self.retriever = ContextualCompressionRetriever(
+            #     base_compressor=compressor,
+            #     base_retriever=base_retriever
+            # )
 
             self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                           | self.prompt
