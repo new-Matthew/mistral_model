@@ -2,10 +2,9 @@ import os
 import tempfile
 import streamlit as st
 from streamlit_chat import message
-from rag import ChatPDF
+from rag import ChatPDF  # Import your ChatPDF class from its module
 
 st.set_page_config(page_title="ChatPDF")
-
 
 def display_messages():
     st.subheader("Chat")
@@ -13,17 +12,15 @@ def display_messages():
         message(msg, is_user=is_user, key=str(i))
     st.session_state["thinking_spinner"] = st.empty()
 
-
 def process_input():
     if st.session_state["user_input"] and len(st.session_state["user_input"].strip()) > 0:
         user_text = st.session_state["user_input"].strip()
-        with st.session_state["thinking_spinner"], st.spinner(f"Pensando"):
+        with st.session_state["thinking_spinner"], st.spinner("Pensando"):
             agent_text = st.session_state["assistant"].ask(user_text)
 
         st.session_state["messages"].append((user_text, True))
         st.session_state["messages"].append((agent_text, False))
         st.session_state["user_input"] = ""
-
 
 def read_and_save_file():
     st.session_state["assistant"].clear()
@@ -39,9 +36,8 @@ def read_and_save_file():
             st.session_state["assistant"].ingest(file_path)
         os.remove(file_path)
 
-
 def page():
-    if len(st.session_state) == 0:
+    if "messages" not in st.session_state:
         st.session_state["messages"] = []
         st.session_state["assistant"] = ChatPDF()
 
@@ -61,7 +57,6 @@ def page():
 
     display_messages()
     st.text_input("Message", key="user_input", on_change=process_input)
-
 
 if __name__ == "__main__":
     page()
