@@ -8,31 +8,30 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import utils as chromautils
 from langchain_community.embeddings import HuggingFaceEmbeddings
-# from langchain.retrievers import ContextualCompressionRetriever
-# from langchain.retrievers.document_compressors import LLMChainExtractor
-# import torch
+
 logging.basicConfig(level=logging.INFO)
 
 class ChatPDF:
-    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=250, chunk_overlap=50,
-                 embedding_model_name="sentence-transformers/all-MiniLM-L6-v2", persist_directory="./vector_store",
-                 k=3, score_threshold=0.2):
-        self.model = ChatOllama(model=model_name, temperature=temperature)
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    def __init__(self, persist_directory="./vector_store"):
+        self.model = ChatOllama(model="llama3.1", temperature=0)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1080, chunk_overlap=50)
         self.prompt = PromptTemplate.from_template(
         """
-        <s>[INST]
-        Você é um assistente técnico especializado em pesquisar documentos. responda somente o que está no contexto. Se a informação não estiver no contexto, diga "Não está no documento"
-        [/INST] </s>
-        Pergunta: {question}
-        Contexto: {context}
-        Resposta precisa em português
+[INST] Você é um assistente especializado em pesquisar documentos. Siga estas instruções rigorosamente:
+
+Responda apenas com informações presentes no contexto fornecido.
+Se a informação não estiver no contexto, responda apenas "Não está no documento".
+Se a palavra "quiz" for mencionada na pergunta, crie uma questão de múltipla escolha com 3 alternativas incorretas e 1 correta, baseada no contexto fornecido. Em seguida, indique a resposta correta.
+Forneça respostas precisas e em português.
+
+Pergunta: {question}
+Contexto: {context}
+
+Resposta:
+[/INST]
         """
         )
-        self.embedding_model_name = embedding_model_name
         self.persist_directory = persist_directory
-        self.k = k
-        self.score_threshold = score_threshold
         self.vector_store = None
         self.retriever = None
         self.chain = None
@@ -44,26 +43,30 @@ class ChatPDF:
         try:
             docs = PyPDFLoader(file_path=pdf_file_path).load()
             chunks = self.text_splitter.split_documents(docs)
+            for i, chunk in enumerate(chunks):
+                chunk.metadata = {
+                    'source': 'course_module_name',
+                    'chunk_id': i,
+                    # Adicione outros metadados que desejar
+                }          
+            
+            
             chunks = chromautils.filter_complex_metadata(chunks)
+            
+            
 
-
-            embedding_model = HuggingFaceEmbeddings(model_name=self.embedding_model_name)
+            embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
             self.vector_store = Chroma.from_documents(documents=chunks, embedding=embedding_model, persist_directory=self.persist_directory)
             self.retriever = self.vector_store.as_retriever(
                 search_type="similarity_score_threshold",
                 search_kwargs={
-                    "k": self.k,
-                    "score_threshold": self.score_threshold
+                    "k": 3,
+                    "score_threshold": 0.0001
                 },
             )
             print(chunks)
 
-            # compressor = LLMChainExtractor.from_llm(self.model)
-            # self.retriever = ContextualCompressionRetriever(
-            #     base_compressor=compressor,
-            #     base_retriever=base_retriever
-            # )
 
             self.chain = ({"context": self.retriever, "question": RunnablePassthrough()}
                           | self.prompt
