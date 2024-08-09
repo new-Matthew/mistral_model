@@ -14,11 +14,11 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 logging.basicConfig(level=logging.INFO)
 
 class ChatPDF:
-    def __init__(self, model_name="llama3", temperature=0.1, chunk_size=250, chunk_overlap=50,
+    def __init__(self, model_name="research_assistant", temperature=0.1, chunk_size=250, chunk_overlap=50,
                  embedding_model_name="sentence-transformers/all-MiniLM-L6-v2", persist_directory="./vector_store",
                  k=3, score_threshold=0.2):
         self.model = ChatOllama(model=model_name, temperature=temperature)
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len, is_separator_regex=False,)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.prompt = PromptTemplate.from_template(
         """
         <s>[INST]
@@ -30,7 +30,7 @@ class ChatPDF:
         """
         )
         self.embedding_model_name = embedding_model_name
-        #self.persist_directory = persist_directory
+        self.persist_directory = persist_directory
         self.k = k
         self.score_threshold = score_threshold
         self.vector_store = None
